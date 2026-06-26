@@ -1,0 +1,540 @@
+/* estilos.css — EV Charge landing page */
+
+/* Importamos las fuentes de Google que vamos a usar.
+   - Google Sans: la fuente principal para títulos, encabezados, navbar y botones (se ve moderna y limpia).
+   - Nunito: la fuente para párrafos, formularios, tablas y textos largos (es más legible y amigable). */
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
+
+/* ── Reset y base ───────────────────────────────────────────────── */
+/* Limpiamos los estilos por defecto del navegador para que el diseño sea consistente en todos los dispositivos */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Variables de color. Mantenemos la identidad visual del proyecto: negro, gris oscuro, blanco y el verde eléctrico de EV Charge */
+  --green:      #39a900;
+  --green-dim:  #2c8200;
+  --green-glow: rgba(57,169,0,0.18);
+  --bg:         #0d0d0d;
+  --bg-2:       #111111;
+  --bg-card:    #161616;
+  --border:     rgba(255,255,255,0.07);
+  --text:       #e8e8e8;
+  --text-muted: #666;
+  --text-dim:   #999;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  /* Si las fuentes de Google no cargan, caemos en Segoe UI o sans-serif */
+  font-family: 'Nunito', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+
+/* ── Navbar ─────────────────────────────────────────────────────── */
+/* Barra de navegación fija en la parte superior */
+#navbar {
+  position: fixed; top: 0; left: 0; right: 0;
+  z-index: 1000;
+  padding: 0 clamp(16px, 5vw, 60px);
+  height: 64px;
+  display: flex; align-items: center;
+  transition: background 0.3s, box-shadow 0.3s; /* Efecto suave al hacer scroll */
+}
+
+#navbar.scrolled {
+  /* Cuando el usuario baja un poco, se oscurece el fondo y se añade un borde */
+  background: rgba(13,13,13,0.95);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-inner {
+  width: 100%; max-width: 1200px; margin: 0 auto;
+  display: flex; align-items: center; gap: 32px;
+}
+
+.nav-logo img {
+  height: 36px; width: auto;
+  display: block;
+}
+
+.nav-links {
+  list-style: none;
+  display: flex; gap: 6px;
+  margin-left: 8px;
+  flex: 1;
+}
+
+.nav-link {
+  text-decoration: none;
+  font-size: 13px; font-weight: 600;
+  color: var(--text-dim);
+  padding: 6px 12px; border-radius: 6px;
+  transition: color 0.2s, background 0.2s;
+  /* Usamos Google Sans para el navbar porque queda más estilizado */
+  font-family: 'Google Sans', sans-serif;
+}
+
+.nav-link:hover, .nav-link.active {
+  color: #fff;
+  background: rgba(255,255,255,0.06);
+}
+
+.nav-link.active { color: var(--green); }
+
+.btn-nav {
+  text-decoration: none;
+  font-size: 13px; font-weight: 700;
+  color: #fff;
+  background: var(--green);
+  padding: 8px 18px; border-radius: 8px;
+  white-space: nowrap;
+  transition: background 0.2s, box-shadow 0.2s;
+  font-family: 'Google Sans', sans-serif;
+}
+
+.btn-nav:hover { background: var(--green-dim); }
+
+/* Botones de Login/Registro y Saludo en Navbar */
+.auth-actions, .user-greeting {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  margin-right: 16px;
+}
+
+.user-greeting span {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Nunito', sans-serif;
+}
+.user-greeting .username {
+  color: var(--green);
+}
+
+.btn-nav-outline {
+  text-decoration: none;
+  font-size: 13px; font-weight: 600;
+  color: var(--text-dim);
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+  font-family: 'Google Sans', sans-serif;
+}
+.btn-nav-outline:hover {
+  color: #fff;
+  border-color: rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.05);
+}
+
+.btn-nav-outline-logout {
+  background: none;
+  border: 1px solid #444;
+  color: #888;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Google Sans', sans-serif;
+}
+.btn-nav-outline-logout:hover {
+  border-color: #e74c3c;
+  color: #e74c3c;
+}
+
+.hamburger {
+  display: none;
+  flex-direction: column; gap: 5px;
+  background: none; border: none; cursor: pointer;
+  padding: 6px; margin-left: auto;
+}
+
+.hamburger span {
+  display: block; width: 22px; height: 2px;
+  background: var(--text); border-radius: 2px;
+  transition: 0.2s;
+}
+
+/* ── Secciones base ─────────────────────────────────────────────── */
+.section { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
+.section-inner { width: 100%; max-width: 1200px; margin: 0 auto; padding: clamp(80px, 10vh, 120px) clamp(20px, 5vw, 60px); }
+.section-head { margin-bottom: 64px; }
+.eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--green); margin-bottom: 14px; font-family: 'Google Sans', sans-serif; }
+.section-head h2 { font-size: clamp(28px, 4vw, 46px); font-weight: 700; line-height: 1.15; color: #fff; letter-spacing: -0.01em; font-family: 'Google Sans', sans-serif; }
+.section-sub { margin-top: 16px; font-size: 15px; color: var(--text-dim); max-width: 560px; line-height: 1.7; font-family: 'Nunito', sans-serif; }
+.reveal { opacity: 0; transition: opacity 0.4s ease; }
+.reveal.visible { opacity: 1; }
+
+/* ── Hero (sin cambios en estructura, solo comentarios) ─────────────────────────── */
+/* El Hero es la sección principal. Tiene un fondo con la imagen banner.png y un overlay oscuro */
+.hero-section {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: radial-gradient(circle at 30% 40%, rgba(57,169,0,0.08) 0%, transparent 60%),
+              radial-gradient(circle at 70% 80%, rgba(57,169,0,0.05) 0%, transparent 50%),
+              linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 100%);
+}
+
+.hero-bg {
+  position: absolute; inset: 0;
+  pointer-events: none;
+}
+
+.hero-image {
+  position: absolute; inset: 0;
+  /* Usamos la imagen banner.png que el usuario subió al proyecto */
+  background-image: url('banner.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.3; /* La hacemos un poco transparente para que no compita con el texto */
+  filter: blur(2px); /* Un blur muy ligero para darle un toque cinematográfico */
+  z-index: 0;
+}
+
+.hero-image::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.6); /* Overlay oscuro para asegurar que el texto blanco se lea bien */
+  z-index: 1;
+}
+
+.grid-lines {
+  position: absolute; inset: 0;
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: radial-gradient(circle at center, black 30%, transparent 70%);
+  -webkit-mask-image: radial-gradient(circle at center, black 30%, transparent 70%);
+  z-index: 1;
+}
+
+.glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.3;
+  z-index: 1;
+}
+.orb1 { width: 400px; height: 400px; background: rgba(57,169,0,0.2); top: -100px; left: -100px; }
+.orb2 { width: 300px; height: 300px; background: rgba(57,169,0,0.15); bottom: -50px; right: -50px; }
+
+.hero-content {
+  position: relative; z-index: 2;
+  text-align: center;
+  padding: clamp(100px, 14vh, 160px) clamp(20px, 5vw, 60px) 80px;
+  max-width: 800px;
+}
+
+.hero-logo {
+  width: 80px; height: auto;
+  margin: 0 auto 20px;
+  display: block;
+}
+
+.hero-eyebrow {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--green);
+  margin-bottom: 20px;
+  font-family: 'Google Sans', sans-serif;
+}
+
+.hero-title {
+  font-size: clamp(30px, 5vw, 54px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: #fff;
+  margin-bottom: 20px;
+  font-family: 'Google Sans', sans-serif;
+}
+.accent { color: var(--green); }
+
+.hero-sub {
+  font-size: clamp(14px, 1.5vw, 17px);
+  color: var(--text-dim);
+  line-height: 1.7;
+  max-width: 520px;
+  margin: 0 auto 36px;
+  font-family: 'Nunito', sans-serif;
+}
+
+.hero-actions {
+  display: flex; gap: 12px;
+  justify-content: center; flex-wrap: wrap;
+}
+
+.btn-primary-lg {
+  display: inline-flex; align-items: center; gap: 8px;
+  text-decoration: none;
+  background: var(--green);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 14px 28px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: 'Google Sans', sans-serif;
+}
+.btn-primary-lg:hover { background: var(--green-dim); }
+
+.btn-ghost-lg {
+  display: inline-flex; align-items: center;
+  text-decoration: none;
+  color: var(--text-dim);
+  font-size: 15px; font-weight: 600;
+  padding: 14px 24px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  font-family: 'Google Sans', sans-serif;
+}
+.btn-ghost-lg:hover { color: #fff; border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); }
+
+.btn-icon { font-size: 16px; }
+
+.hero-scroll-hint {
+  position: absolute; bottom: 36px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  cursor: pointer; color: var(--text-muted);
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  transition: color 0.2s;
+  font-family: 'Google Sans', sans-serif;
+}
+.hero-scroll-hint:hover { color: var(--green); }
+.scroll-arrow {
+  width: 18px; height: 18px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  animation: bounce 1.6s ease-in-out infinite;
+}
+@keyframes bounce { 0%, 100% { transform: rotate(45deg) translateY(0); } 50% { transform: rotate(45deg) translateY(5px); } }
+
+/* ── Servicios (NUEVO DISEÑO) ──────────────────────────────────── */
+/* Estas son las tarjetas de funcionalidades. Cada tarjeta tiene una imagen (las seccion*.png)
+   y un contenido de texto. */
+.servicios-section { background: var(--bg-2); border-top: 1px solid var(--border); }
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.service-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0;
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.25s;
+  cursor: default;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Al pasar el mouse, la tarjeta se eleva un poco y su borde se ilumina */
+.service-card:hover {
+  border-color: rgba(57,169,0,0.3);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  transform: translateY(-4px);
+}
+
+.card-image {
+  width: 100%;
+  height: 160px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Asegura que la imagen cubra todo el espacio sin deformarse */
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.service-card:hover .card-image img {
+  transform: scale(1.05); /* Un zoom suave a la imagen al hacer hover */
+}
+
+.card-content {
+  padding: 20px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.card-content h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  font-family: 'Google Sans', sans-serif;
+}
+
+.card-content p {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.7;
+  margin: 0;
+  font-family: 'Nunito', sans-serif;
+}
+
+/* ── Quiénes somos (sin cambios estructurales) ────────────────── */
+.nosotros-section { background: var(--bg); border-top: 1px solid var(--border); }
+.nosotros-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+.nosotros-visual { display: flex; align-items: center; justify-content: center; }
+.bolt-display { position: relative; width: 260px; height: 260px; display: flex; align-items: center; justify-content: center; }
+.bolt-img { width: 140px; height: auto; position: relative; z-index: 2; }
+.bolt-ring { position: absolute; border-radius: 50%; border: 1px solid rgba(57,169,0,0.15); }
+.ring1 { width: 180px; height: 180px; }
+.ring2 { width: 230px; height: 230px; opacity: 0.4; }
+
+.nosotros-text h2 {
+  font-size: clamp(24px, 3vw, 38px);
+  font-weight: 700;
+  line-height: 1.2;
+  color: #fff;
+  margin-bottom: 20px;
+  letter-spacing: -0.01em;
+  font-family: 'Google Sans', sans-serif;
+}
+.nosotros-text p { font-size: 14px; color: var(--text-dim); line-height: 1.75; margin-bottom: 14px; font-family: 'Nunito', sans-serif; }
+.nosotros-text p strong { color: var(--text); }
+.nosotros-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+.tag { font-size: 12px; font-weight: 600; color: var(--green); background: var(--green-glow); border: 1px solid rgba(57,169,0,0.25); padding: 5px 12px; border-radius: 20px; font-family: 'Google Sans', sans-serif; }
+
+/* ── Imágenes dentro de DIV (mantenido para otras secciones) ───── */
+.img-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px 0;
+  overflow: hidden;
+  border-radius: 12px;
+}
+.img-container img {
+  max-width: 100%;
+  height: auto;
+  object-fit: cover;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+/* ── Cifras ──────────────────────────────────────────────────────── */
+.cifras-section { background: var(--bg-2); border-top: 1px solid var(--border); }
+.cifras-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+.cifra-item { background: var(--bg-card); padding: 40px 24px; text-align: center; border-right: 1px solid var(--border); }
+.cifra-item:last-child { border-right: none; }
+.cifra-num { font-size: clamp(40px, 5vw, 60px); font-weight: 800; color: var(--green); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1; font-family: 'Google Sans', sans-serif; }
+.cifra-label { font-size: 13px; color: var(--text-muted); margin-top: 10px; line-height: 1.4; font-family: 'Nunito', sans-serif; }
+
+/* ── Contacto ────────────────────────────────────────────────────── */
+.contacto-section { background: var(--bg); border-top: 1px solid var(--border); }
+.contacto-inner { max-width: 780px; }
+.contacto-form { display: flex; flex-direction: column; gap: 16px; margin-top: 40px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-field { display: flex; flex-direction: column; gap: 7px; }
+.form-field label { font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; font-family: 'Google Sans', sans-serif; }
+.form-field input, .form-field textarea { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; padding: 11px 14px; outline: none; font-family: 'Nunito', sans-serif; resize: vertical; transition: border-color 0.2s, box-shadow 0.2s; }
+.form-field input:focus, .form-field textarea:focus { border-color: rgba(57,169,0,0.5); }
+
+/* ── Footer ──────────────────────────────────────────────────────── */
+.footer { background: #090909; border-top: 1px solid var(--border); }
+.footer-inner { max-width: 1200px; margin: 0 auto; padding: 60px clamp(20px, 5vw, 60px) 40px; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; }
+.footer-logo { height: 38px; width: auto; margin-bottom: 14px; display: block; }
+.footer-brand p { font-size: 13px; color: var(--text-muted); line-height: 1.7; font-family: 'Nunito', sans-serif; }
+.footer-title { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 16px; font-family: 'Google Sans', sans-serif; }
+.footer-links { display: flex; flex-direction: column; gap: 0; }
+.footer-links a { text-decoration: none; font-size: 13px; color: var(--text-muted); padding: 5px 0; transition: color 0.2s; font-family: 'Nunito', sans-serif; }
+.footer-links a:hover { color: var(--green); }
+.footer-bottom { border-top: 1px solid var(--border); padding: 20px clamp(20px, 5vw, 60px); text-align: center; }
+.footer-bottom p { font-size: 12px; color: var(--text-muted); font-family: 'Nunito', sans-serif; }
+
+/* ── Auth Modal ──────────────────────────────────────────────────── */
+/* Ventana modal para login y registro. Se activa desde el JavaScript */
+#auth-modal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 9999; }
+.auth-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
+.auth-card { position: relative; z-index: 1; background: #1a1a1a; border: 1px solid #333; border-top: 3px solid #39a900; border-radius: 12px; padding: 28px; width: 340px; box-shadow: 0 16px 48px rgba(0,0,0,0.6); }
+.auth-close { position: absolute; top: 12px; right: 14px; background: none; border: none; color: #666; font-size: 16px; cursor: pointer; line-height: 1; padding: 4px; transition: color 0.2s; }
+.auth-close:hover { color: #fff; }
+.auth-logo { display: block; width: 100px; height: auto; margin: 0 auto 22px; filter: drop-shadow(0 0 10px rgba(57,169,0,0.55)) drop-shadow(0 0 24px rgba(57,169,0,0.35)) drop-shadow(0 4px 14px rgba(0,0,0,0.4)); animation: logo-glow 3s ease-in-out infinite; }
+@keyframes logo-glow { 0%, 100% { filter: drop-shadow(0 0 10px rgba(57,169,0,0.55)) drop-shadow(0 0 24px rgba(57,169,0,0.35)) drop-shadow(0 4px 14px rgba(0,0,0,0.4)); } 50% { filter: drop-shadow(0 0 16px rgba(57,169,0,0.8)) drop-shadow(0 0 34px rgba(57,169,0,0.5)) drop-shadow(0 4px 14px rgba(0,0,0,0.4)); } }
+.auth-tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 1px solid #333; }
+.auth-tab { flex: 1; padding: 10px; background: none; border: none; color: #888; cursor: pointer; font-size: 14px; font-weight: 600; border-bottom: 2px solid transparent; transition: all 0.2s; font-family: 'Google Sans', sans-serif; }
+.auth-tab.active { color: #39a900; border-bottom-color: #39a900; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 12px; color: #aaa; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; font-family: 'Google Sans', sans-serif; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 12px; background: #2a2a2a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px; outline: none; transition: border-color 0.2s; font-family: 'Nunito', sans-serif; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #39a900; box-shadow: 0 0 0 2px rgba(57,169,0,0.15); }
+.password-box { position: relative; }
+.password-box input { padding-right: 42px; }
+.password-eye { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 15px; opacity: 0.6; user-select: none; transition: opacity 0.2s; }
+.password-eye:hover { opacity: 1; }
+.strength-bar { width: 100%; height: 5px; background: rgba(255,255,255,0.08); border-radius: 20px; overflow: hidden; margin-top: 0; max-height: 0; opacity: 0; transform: translateY(-4px); transition: max-height 0.35s ease, opacity 0.3s ease, margin-top 0.35s ease, transform 0.3s ease; }
+.strength-bar.show { max-height: 5px; opacity: 1; margin-top: 8px; transform: translateY(0); }
+.strength-progress { height: 100%; width: 0%; background: #e74c3c; transition: width 0.3s ease, background-color 0.3s ease; border-radius: 20px; }
+.password-requisitos { margin-top: 0; font-size: 11px; list-style: none; max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.4s ease, opacity 0.35s ease 0.05s, margin-top 0.4s ease; }
+.password-requisitos.show { max-height: 140px; opacity: 1; margin-top: 10px; }
+.password-requisitos li { margin: 4px 0; color: #e74c3c; opacity: 0; transform: translateX(-6px); transition: color 0.2s ease, opacity 0.3s ease, transform 0.3s ease; }
+.password-requisitos.show li { opacity: 1; transform: translateX(0); }
+.password-requisitos li.ok { color: #39a900; }
+.btn-primary { background: #39a900; color: #fff; padding: 9px 14px; border-radius: 6px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'Google Sans', sans-serif; }
+.btn-primary:hover { background: #2c8200; }
+.btn-block { display: block; width: 100%; text-align: center; }
+.btn:disabled, .btn-primary:disabled { background: #333; color: #666; cursor: not-allowed; }
+.alert { padding: 10px 12px; border-radius: 6px; font-size: 12px; margin-bottom: 10px; display: none; font-family: 'Nunito', sans-serif; }
+.alert-error { background: rgba(231,76,60,0.15); border: 1px solid rgba(231,76,60,0.3); color: #e74c3c; }
+
+/* ── Responsive ─────────────────────────────────────────────────── */
+/* Ajustes para que la página se vea bien en pantallas de distintos tamaños */
+@media (max-width: 900px) {
+  .nosotros-inner { grid-template-columns: 1fr; gap: 40px; }
+  .nosotros-visual { display: none; }
+  .cifras-grid { grid-template-columns: repeat(2, 1fr); }
+  .cifra-item:nth-child(2) { border-right: none; }
+  .footer-inner { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 600px) {
+  .nav-links { display: none; flex-direction: column; position: absolute;
+    top: 64px; left: 0; right: 0; background: rgba(13,13,13,0.97);
+    padding: 16px; gap: 4px; border-bottom: 1px solid var(--border); }
+  .nav-links.open { display: flex; }
+  .hamburger { display: flex; }
+  .btn-nav { display: none; }
+  .btn-nav-outline { display: none; }
+  .auth-actions, .user-greeting { display: flex !important; margin: 0; align-items: center; margin-left: auto; }
+  .form-row { grid-template-columns: 1fr; }
+  .cifras-grid { grid-template-columns: repeat(2, 1fr); }
+  .footer-inner { grid-template-columns: 1fr; }
+  .hero-actions { flex-direction: column; align-items: center; }
+  .services-grid { grid-template-columns: 1fr; }
+  .card-image { height: 140px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; }
+}

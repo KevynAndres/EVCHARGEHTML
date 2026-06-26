@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV Charge — Mapa</title>
+    
+    <!-- Google Fonts importadas -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <link rel="stylesheet" href="estilos_mapa.css">
+</head>
+<body>
+
+<!-- Topbar -->
+<div id="topbar">
+  <a href="index.html" class="topbar-back">← Inicio</a>
+  <a href="index.html" class="topbar-logo">
+    <img src=" ./img/logo.png" alt="EV Charge">
+  </a>
+  <div class="topbar-right">
+    <span id="topbar-usuario"></span>
+    <button id="btn-topbar-login" class="btn-topbar-login" onclick="abrirAuthModal('login')">Iniciar sesión</button>
+    <button id="btn-topbar-registro" class="btn-topbar-registro" onclick="abrirAuthModal('registro')">Registrarse</button>
+    <button id="btn-topbar-logout" class="btn-topbar-logout" onclick="doLogout()" style="display:none">Salir</button>
+  </div>
+</div>
+
+<!-- Auth Modal -->
+<div id="auth-modal" style="display:none">
+  <div class="auth-backdrop" onclick="cerrarAuthModal()"></div>
+  <div class="auth-card">
+    <button class="auth-close" onclick="cerrarAuthModal()">✕</button>
+    <img src="./img/logo.png" alt="Logo" class="auth-logo">
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">Iniciar sesión</button>
+      <button class="auth-tab" onclick="switchAuthTab('registro')">Registrarse</button>
+    </div>
+
+    <div id="auth-alert" class="alert" style="display:none"></div>
+
+    <!-- LOGIN -->
+    <div id="form-login">
+      <div class="form-group">
+        <label>Correo</label>
+        <input type="email" id="login-email" placeholder="correo@ejemplo.com">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <div class="password-box">
+          <input type="password" id="login-pass" placeholder="••••••••">
+          <span class="password-eye" onclick="togglePasswordVisibility('login-pass', this)">👁</span>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="doLogin()">Entrar</button>
+    </div>
+
+    <!-- REGISTRO -->
+    <div id="form-registro" style="display:none">
+      <div class="form-group">
+        <label>Nombre de usuario</label>
+        <input type="text" id="reg-nombre" placeholder="Nombre de usuario">
+      </div>
+      <div class="form-group">
+        <label>Correo</label>
+        <input type="email" id="reg-email" placeholder="correo@ejemplo.com">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <div class="password-box">
+          <input type="password" id="reg-pass" placeholder="Crea tu contraseña">
+          <span class="password-eye" onclick="togglePasswordVisibility('reg-pass', this)">👁</span>
+        </div>
+        <div class="strength-bar" id="strength-bar">
+          <div class="strength-progress" id="strength-progress"></div>
+        </div>
+        <ul class="password-requisitos" id="password-requisitos">
+          <li id="req-min">❌ Mínimo 8 caracteres</li>
+          <li id="req-may">❌ Una mayúscula</li>
+          <li id="req-low">❌ Una minúscula</li>
+          <li id="req-num">❌ Un número</li>
+          <li id="req-sim">❌ Un símbolo</li>
+          <li id="req-same">❌ Las contraseñas coinciden</li>
+        </ul>
+      </div>
+      <div class="form-group">
+        <label>Confirmar contraseña</label>
+        <input type="password" id="reg-pass-confirm" placeholder="Repite tu contraseña"
+          onpaste="return false" oncopy="return false" oncut="return false" autocomplete="off">
+      </div>
+      <button id="btn-crear-cuenta" class="btn btn-primary btn-block" onclick="doRegistro()" disabled>Crear cuenta</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Mapa + Sidebar -->
+<div id="map-wrapper">
+<div id="sidebar">
+
+  <!-- Cabecera de usuario -->
+  <div id="user-header">
+    <div class="user-avatar" id="avatar-initials">?</div>
+    <div class="user-info">
+      <div class="user-name" id="user-name-display">—</div>
+    </div>
+    <button id="btn-logout" onclick="doLogout()">Salir</button>
+  </div>
+  <div id="banner-sin-sesion" style="padding:12px 16px;background:#1e1e1e;border-bottom:1px solid #2a2a2a;font-size:13px;color:#888;text-align:center;font-family:'Nunito',sans-serif;">
+    <a href="#" onclick="abrirAuthModal('login')" style="color:#39a900;font-weight:600;text-decoration:none">Inicia sesión</a> o <a href="#" onclick="abrirAuthModal('registro')" style="color:#39a900;font-weight:600;text-decoration:none">regístrate</a> para acceder a Auto, Cargas, Perfil y ver la información de las estaciones.
+  </div>
+
+  <!-- Filtro del mapa -->
+  <div class="filter-bar">
+    <select id="conector-select" disabled onchange="filtrarEstaciones()">
+      <option value="TODOS">Todos los conectores</option>
+      <option value="CCS">CCS — Carga Rápida</option>
+      <option value="Type 2">Tipo 2 (Mennekes)</option>
+      <option value="CHAdeMO">CHAdeMO</option>
+      <option value="GB/T">GB/T</option>
+      <option value="J1772">Tipo 1 (J1772)</option>
+    </select>
+  </div>
+
+  <!-- Tabs de navegación -->
+  <div id="nav-tabs">
+    <button class="nav-tab active" id="btn-tab-mapa" onclick="showTab('tab-mapa')">🗺 Mapa</button>
+    <button class="nav-tab tab-requiere-login" id="btn-tab-vehiculos" onclick="showTab('tab-vehiculos')" style="display:none">🚗 Auto</button>
+    <button class="nav-tab tab-requiere-login" id="btn-tab-historial" onclick="showTab('tab-historial')" style="display:none">📋 Cargas</button>
+    <button class="nav-tab tab-requiere-login" id="btn-tab-pagos" onclick="showTab('tab-pagos')" style="display:none">💳 Pagos</button>
+    <button class="nav-tab tab-requiere-login" id="btn-tab-reservas" onclick="showTab('tab-reservas')" style="display:none">📅 Reservas</button>
+    <button class="nav-tab tab-requiere-login" id="btn-tab-perfil" onclick="showTab('tab-perfil')" style="display:none">👤 Perfil</button>
+    <a class="nav-tab nav-tab-admin tab-requiere-login" id="tab-btn-admin" href="admin.html" style="display:none;text-decoration:none">⚙ Admin</a>
+  </div>
+
+  <!-- ── TAB: MAPA / ESTACIÓN ── -->
+  <div id="tab-mapa" class="tab-panel active" id="panel-estacion">
+    <p class="placeholder">🔒 Inicia sesión o regístrate para ver los detalles de las estaciones.</p>
+  </div>
+
+  <!-- ── TAB: VEHÍCULOS ── -->
+  <div id="tab-vehiculos" class="tab-panel">
+    <div class="section-title">Mis vehículos</div>
+    <div id="lista-vehiculos"><p class="placeholder">Cargando...</p></div>
+
+    <div class="section-title" style="margin-top:28px">Agregar vehículo</div>
+    <div class="form-group">
+      <label>Marca</label>
+      <input type="text" id="v-marca" placeholder="Ej: BYD, Tesla, Renault">
+    </div>
+    <div class="form-group">
+      <label>Modelo</label>
+      <input type="text" id="v-modelo" placeholder="Ej: Atto 3, Model 3, Zoe">
+    </div>
+    <div class="form-group">
+      <label>Año</label>
+      <input type="number" id="v-anio" placeholder="2023" min="2010" max="2030">
+    </div>
+    <div class="form-group">
+      <label>Autonomía (km)</label>
+      <input type="number" id="v-autonomia" placeholder="300" min="50" max="800">
+    </div>
+    <div class="form-group">
+      <label>Conector nativo</label>
+      <select id="v-conector">
+        <option value="CCS">CCS (Combo)</option>
+        <option value="Type 2">Tipo 2 (Mennekes)</option>
+        <option value="CHAdeMO">CHAdeMO</option>
+        <option value="GB/T">GB/T</option>
+        <option value="J1772">Tipo 1 (J1772)</option>
+      </select>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="crearVehiculo()">Guardar vehículo</button>
+    <div id="vehiculo-alert" class="alert"></div>
+  </div>
+
+  <!-- ── TAB: HISTORIAL DE CARGAS ── -->
+  <div id="tab-historial" class="tab-panel">
+    <div id="stats-cargas" class="stats-row">
+      <div class="stat-box"><div class="stat-value" id="stat-sesiones">—</div><div class="stat-label">Cargas</div></div>
+      <div class="stat-box"><div class="stat-value" id="stat-kwh">—</div><div class="stat-label">kWh</div></div>
+      <div class="stat-box"><div class="stat-value" id="stat-costo">—</div><div class="stat-label">COP est.</div></div>
+    </div>
+
+    <div class="section-title">Registrar carga</div>
+    <div class="form-group">
+      <label>Estación (nombre o ID OCM)</label>
+      <input type="text" id="h-estacion" placeholder="Nombre de la estación">
+    </div>
+    <div class="form-group">
+      <label>kWh cargados</label>
+      <input type="number" id="h-kwh" placeholder="30.5" step="0.1" min="0">
+    </div>
+    <div class="form-group">
+      <label>Costo estimado (COP)</label>
+      <input type="number" id="h-costo" placeholder="25000" min="0">
+    </div>
+    <div class="form-group">
+      <label>Notas</label>
+      <textarea id="h-notas" rows="2" placeholder="Condiciones, observaciones..."></textarea>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="registrarCarga()">Registrar</button>
+    <div id="carga-alert" class="alert"></div>
+
+    <div class="section-title">Historial reciente</div>
+    <div id="lista-cargas"><p class="placeholder">Sin cargas registradas.</p></div>
+  </div>
+
+  <!-- ── TAB: MÉTODOS DE PAGO ── -->
+  <div id="tab-pagos" class="tab-panel">
+    <div class="section-title">Mis métodos de pago</div>
+    <div id="lista-pagos"><p class="placeholder">Cargando...</p></div>
+
+    <div class="section-title" style="margin-top:28px">Agregar método de pago</div>
+    <div class="form-group">
+      <label>Tipo</label>
+      <select id="p-tipo">
+        <option value="Visa">Visa</option>
+        <option value="Mastercard">Mastercard</option>
+        <option value="American Express">American Express</option>
+        <option value="Efectivo">Efectivo</option>
+        <option value="Otro">Otro</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Número (enmascarado)</label>
+      <input type="text" id="p-numero" placeholder="**** **** **** 1234">
+    </div>
+    <div class="form-group">
+      <label>Estado</label>
+      <select id="p-estado">
+        <option value="true">Activo</option>
+        <option value="false">Inactivo</option>
+      </select>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="crearPago()">Guardar método</button>
+    <div id="pago-alert" class="alert"></div>
+  </div>
+
+  <!-- ── TAB: MIS RESERVAS ── -->
+  <div id="tab-reservas" class="tab-panel">
+    <div class="section-title">Mis reservas</div>
+    <div id="lista-reservas"><p class="placeholder">Cargando...</p></div>
+
+    <div class="section-title" style="margin-top:28px">Nueva reserva</div>
+    <div class="form-group">
+      <label>Estación (ID OCM)</label>
+      <input type="text" id="r-estacion" placeholder="ID OCM">
+    </div>
+    <div class="form-group">
+      <label>Nombre de la estación</label>
+      <input type="text" id="r-estacion-nombre" placeholder="Nombre">
+    </div>
+    <div class="form-group">
+      <label>Fecha y hora de inicio</label>
+      <input type="datetime-local" id="r-inicio">
+    </div>
+    <div class="form-group">
+      <label>Fecha y hora de fin</label>
+      <input type="datetime-local" id="r-fin">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="crearReserva()">Crear reserva</button>
+    <div id="reserva-alert" class="alert"></div>
+  </div>
+
+  <!-- ── TAB: PERFIL ── -->
+  <div id="tab-perfil" class="tab-panel">
+    <div class="section-title">Mi perfil</div>
+    <div class="stats-row" style="grid-template-columns:1fr 1fr;margin-bottom:16px">
+      <div class="stat-box"><div class="stat-value" id="perfil-cargas">—</div><div class="stat-label">Cargas</div></div>
+      <div class="stat-box"><div class="stat-value" id="perfil-kwh">—</div><div class="stat-label">kWh total</div></div>
+    </div>
+    <div class="section-title">Mis favoritos</div>
+    <div id="lista-favoritos-perfil"><p class="placeholder">Sin favoritos guardados.</p></div>
+    
+    <div class="section-title">Mis reservas activas</div>
+    <div id="lista-reservas-perfil"><p class="placeholder">Sin reservas activas.</p></div>
+  </div>
+
+</div><!-- /sidebar -->
+
+<!-- Scripts -->
+<div id="map"></div>
+</div><!-- /map-wrapper -->
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+// ════════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════════
+
+const API = 'http://127.0.0.1:8000';
+const OCM_KEY = '750370f3-3d40-4082-b93c-904118ab1dc8';
+const BOGOTA = [4.6651, -74.1204];
+
+let authToken = localStorage.getItem('ev_token') || null;
+let currentUser = null;
+
+// ════════════════════════════════════════════════
+// MAPA
+// ════════════════════════════════════════════════
+
+const map = L.map('map').setView(BOGOTA, 12);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; OpenStreetMap'
+}).addTo(map);
+
+let rutaCapa = null;
+let usuarioMarcador = null;
+let estacionesCargadas = [];
+let marcadoresActuales = [];
+let estacionSeleccionada = null;
+let planMarcadores = [];
+
+const iconDefault = L.divIcon({
+    html: `<div style="
+        width:22px;height:22px;border-radius:50%;
+        background:#39a900;
+        border:3px solid #fff;
+        box-shadow:0 0 0 2px #39a900, 0 3px 8px rgba(0,0,0,0.5);
+    "></div>`,
+    iconSize: [22,22], iconAnchor: [11,11], className: ''
+});
+
+const iconSelected = L.divIcon({
+    html: `<div style="
+        width:28px;height:28px;border-radius:50%;
+        background:#f39c12;
+        border:3px solid #fff;
+        box-shadow:0 0 0 3px #f39c12, 0 4px 12px rgba(0,0,0,0.6);
+    "></div>`,
+    iconSize: [28,28], iconAnchor: [14,14], className: ''
+});
+
+const iconPlan = L.divIcon({
+    html: `<div style="
+        width:22px;height:22px;border-radius:50%;
+        background:#3498db;
+        border:3px solid #fff;
+        box-shadow:0 0 0 2px #3498db, 0 3px 8px rgba(0,0,0,0.5);
+    "></div>`,
+    iconSize: [22,22], iconAnchor: [11,11], className: ''
+});
+
+// Cargar estaciones OCM
+const apiUrl = `https://api.openchargemap.io/v3/poi/?output=json&countrycode=CO&latitude=${BOGOTA[0]}&longitude=${BOGOTA[1]}&distance=20&distanceunit=KM&compact=false&verbose=false&key=${OCM_KEY}`;
+fetch(apiUrl)
+    .then(r => r.json())
+    .then(data => { estacionesCargadas = data; dibujarMarcadores(data); })
+    .catch(e => console.error('OCM error:', e));
+
+function dibujarMarcadores(lista) {
+    marcadoresActuales.forEach(m => map.removeLayer(m));
+    marcadoresActuales = [];
+    if (rutaCapa) { map.removeLayer(rutaCapa); rutaCapa = null; }
+
+    lista.forEach(st => {
+        const lat = st.AddressInfo.Latitude;
+        const lon = st.AddressInfo.Longitude;
+        const m = L.marker([lat, lon], { icon: iconDefault }).addTo(map);
+        m.on('click', () => {
+            marcadoresActuales.forEach(x => x.setIcon(iconDefault));
+            m.setIcon(iconSelected);
+            estacionSeleccionada = st;
+            mostrarDetallesEstacion(st);
+            showTab('tab-mapa');
+        });
+        marcadoresActuales.push(m);
+    });
+}
+
+function filtrarEstaciones() {
+    if (!currentUser) { return; }
+    const filtro = document.getElementById('conector-select').value;
+    document.getElementById('tab-mapa').innerHTML = '<p class="placeholder">Selecciona una estación filtrada para ver sus detalles.</p>';
+    if (filtro === 'TODOS') { dibujarMarcadores(estacionesCargadas); return; }
+    const filtradas = estacionesCargadas.filter(st =>
+        st.Connections && st.Connections.some(c => {
+            const t = c.ConnectionType ? c.ConnectionType.Title : '';
+            return t.toLowerCase().includes(filtro.toLowerCase());
+        })
+    );
+    dibujarMarcadores(filtradas);
+}
+
+// ════════════════════════════════════════════════
+// PANEL ESTACIÓN (con reservas y estados)
+// ════════════════════════════════════════════════
+
+async function mostrarDetallesEstacion(st) {
+    if (!currentUser) {
+        document.getElementById('tab-mapa').innerHTML = `
+            <div style="text-align:center;padding:30px 10px;">
+                <p style="font-size:15px;color:#aaa;margin-bottom:16px">🔒 Debes iniciar sesión o registrarte para ver la información de esta estación.</p>
+                <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+                    <a href="#" onclick="abrirAuthModal('login')" style="color:#39a900;font-weight:600;text-decoration:none;border:1px solid #39a900;padding:8px 16px;border-radius:6px;display:inline-block">Iniciar sesión</a>
+                    <a href="#" onclick="abrirAuthModal('registro')" style="color:#39a900;font-weight:600;text-decoration:none;border:1px solid #39a900;padding:8px 16px;border-radius:6px;display:inline-block">Registrarse</a>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    const nombre   = st.AddressInfo.Title || 'Estación';
+    const dir      = st.AddressInfo.AddressLine1 || '—';
+    const operador = st.OperatorInfo ? st.OperatorInfo.Title : 'Independiente';
+    const uso      = st.UsageType   ? st.UsageType.Title    : 'No especificado';
+    const ocmId    = String(st.ID);
+    const lat      = st.AddressInfo.Latitude;
+    const lon      = st.AddressInfo.Longitude;
+
+    let estadoBadge = '<span class="badge badge-gray">Consultando...</span>';
+    let accionesReserva = '';
+    try {
+        const estadoData = await apiFetch(`/estado/${ocmId}`);
+        if (estadoData.estado === 'disponible') {
+            estadoBadge = '<span class="badge badge-green">✅ Disponible</span>';
+            if (!currentUser.is_admin) {
+                // CAMBIO: Formulario de reserva directa en la tarjeta de la estación
+                accionesReserva = `
+                    <div class="reserva-box" id="reserva-rapida-${ocmId}" style="display:block;">
+                        <div class="form-group">
+                            <label>Inicio de reserva</label>
+                            <input type="datetime-local" id="res-${ocmId}-inicio">
+                        </div>
+                        <div class="form-group">
+                            <label>Fin de reserva</label>
+                            <input type="datetime-local" id="res-${ocmId}-fin">
+                        </div>
+                        <button class="btn btn-primary btn-block" onclick="crearReservaDesdeMapa('${ocmId}','${nombre.replace(/'/g,"\\'")}')">
+                            Confirmar Reserva
+                        </button>
+                    </div>
+                `;
+            }
+        } else if (estadoData.estado === 'reservada') {
+            estadoBadge = `<span class="badge badge-blue">🟡 Reservada por ${estadoData.reservado_por || 'otro usuario'}</span>`;
+        } else if (estadoData.estado === 'mantenimiento') {
+            estadoBadge = '<span class="badge badge-red">🔧 En mantenimiento</span>';
+        }
+    } catch(e) {
+        estadoBadge = '<span class="badge badge-gray">Error de estado</span>';
+    }
+
+    let conectoresHTML = '';
+    (st.Connections || []).forEach(c => {
+        const tipo   = c.ConnectionType ? c.ConnectionType.Title : 'Genérico';
+        const pot    = c.PowerKW ? `${c.PowerKW} kW` : 'Potencia no especificada';
+        const cant   = c.Quantity ? `Bahías: ${c.Quantity}` : 'Bahías: 1';
+        const ac     = c.CurrentType ? c.CurrentType.Title : 'AC/DC';
+        conectoresHTML += `
+            <div class="connector-card">
+                <strong>🔌 ${tipo}</strong>
+                <small>${pot} · ${ac}</small>
+                <small>${cant}</small>
+            </div>`;
+    });
+    if (!conectoresHTML) conectoresHTML = '<p style="color:#666;font-size:12px">Sin info de conectores.</p>';
+
+    let calHTML = '<p style="color:#666;font-size:12px">Sin calificaciones aún.</p>';
+    let repHTML = '';
+    try {
+        const calData = await apiFetch(`/calificaciones/${ocmId}`);
+        if (calData.total > 0) {
+            const stars = renderStarsStatic(calData.promedio);
+            calHTML = `
+                <div class="rating-display">
+                    <span class="rating-big">${calData.promedio}</span>
+                    <div>
+                        <div>${stars}</div>
+                        <small style="color:#666">${calData.total} calificaciones</small>
+                    </div>
+                </div>
+                ${calData.calificaciones.slice(0,3).map(c => `
+                    <div class="card" style="margin-top:8px">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                            <strong style="font-size:12px">${c.usuario}</strong>
+                            <span>${renderStarsStatic(c.puntaje)}</span>
+                        </div>
+                        ${c.comentario ? `<p style="font-size:12px;color:#aaa">${c.comentario}</p>` : ''}
+                    </div>`).join('')}`;
+        }
+        const repData = await apiFetch(`/reportes/${ocmId}`);
+        if (repData.length > 0) {
+            repHTML = repData.map(r => `
+                <div class="card" style="border-left:3px solid #e74c3c;margin-bottom:6px">
+                    <span class="badge badge-red">${r.tipo.replace('_',' ')}</span>
+                    <p style="font-size:12px;color:#aaa;margin-top:4px">${r.descripcion || '—'}</p>
+                </div>`).join('');
+        } else {
+            repHTML = '<p style="color:#666;font-size:12px">Sin reportes activos.</p>';
+        }
+    } catch(e) {}
+
+    const esFav = await checkFavorito(ocmId);
+
+    let accionesComunidad = '';
+    if (!currentUser.is_admin) {
+        accionesComunidad = `
+            <button class="btn btn-outline btn-block btn-sm" style="margin-top:8px"
+                onclick="abrirCalificar('${ocmId}','${nombre.replace(/'/g,"\\'")}')">
+                ⭐ Calificar esta estación
+            </button>
+            <button class="btn btn-outline btn-block btn-sm" style="margin-top:8px"
+                onclick="abrirReporte('${ocmId}','${nombre.replace(/'/g,"\\'")}')">
+                📢 Reportar problema
+            </button>
+        `;
+    } else {
+        accionesComunidad = `
+            <p class="admin-msg-block">
+                Eres administrador. Las funciones de calificación y reporte están deshabilitadas para ti.
+            </p>
+        `;
+    }
+
+    document.getElementById('tab-mapa').innerHTML = `
+        <div class="estacion-header">
+            <div>
+                <h3>${nombre}</h3>
+                <div class="estacion-badge-wrapper">${estadoBadge}</div>
+            </div>
+            <button class="btn btn-sm ${esFav ? 'btn-primary' : 'btn-outline'}"
+                onclick="toggleFavorito('${ocmId}','${nombre.replace(/'/g,"\\'")}',this)"
+                title="${esFav ? 'Quitar favorito' : 'Guardar favorito'}">
+                ${esFav ? '★' : '☆'}
+            </button>
+        </div>
+
+        ${accionesReserva}
+
+        <button class="btn btn-primary btn-block" onclick="calcularRuta(${lat},${lon})">
+            🚀 Cómo llegar desde aquí
+        </button>
+
+        <div class="section-title">Ubicación</div>
+        <p style="font-size:13px;margin-bottom:4px">📍 ${dir}</p>
+        <p style="font-size:12px;color:#666">Operador: ${operador}</p>
+
+        <div class="section-title">Conectores</div>
+        ${conectoresHTML}
+
+        <div class="section-title">Calificaciones</div>
+        ${calHTML}
+        
+        ${accionesComunidad}
+
+        <div id="form-calificar-${ocmId}" style="display:none;margin-top:12px">
+            <div class="card">
+                <p style="font-size:12px;margin-bottom:8px;font-weight:600">Tu calificación:</p>
+                <div class="stars" id="stars-${ocmId}">
+                    ${[1,2,3,4,5].map(i => `<span class="star" onclick="selectStar('${ocmId}',${i})">★</span>`).join('')}
+                </div>
+                <textarea id="com-${ocmId}" style="width:100%;margin-top:8px;padding:8px;background:#1e1e1e;border:1px solid #444;border-radius:5px;color:#fff;font-size:12px;resize:none" rows="2" placeholder="Comentario (opcional)"></textarea>
+                <button class="btn btn-primary btn-block btn-sm" style="margin-top:8px"
+                    onclick="enviarCalificacion('${ocmId}','${nombre.replace(/'/g,"\\'")}')">Enviar</button>
+            </div>
+        </div>
+
+        <div class="section-title">Reportes activos</div>
+        ${repHTML}
+
+        <div id="form-reporte-${ocmId}" style="display:none;margin-top:12px">
+            <div class="card">
+                <p style="font-size:12px;margin-bottom:8px;font-weight:600">Tipo de problema:</p>
+                <div class="tipo-reporte">
+                    ${['averia','fuera_servicio','ocupado','otro'].map(t =>
+                        `<span class="tipo-pill" onclick="selectTipoReporte('${ocmId}','${t}',this)">${t.replace('_',' ')}</span>`
+                    ).join('')}
+                </div>
+                <textarea id="rep-desc-${ocmId}" style="width:100%;margin-top:8px;padding:8px;background:#1e1e1e;border:1px solid #444;border-radius:5px;color:#fff;font-size:12px;resize:none" rows="2" placeholder="Descripción (opcional)"></textarea>
+                <button class="btn btn-primary btn-block btn-sm" style="margin-top:8px"
+                    onclick="enviarReporte('${ocmId}','${nombre.replace(/'/g,"\\'")}')">Enviar reporte</button>
+            </div>
+        </div>
+
+        <p style="font-size:10px;color:#444;text-align:center;margin-top:16px">OCM ID: ${ocmId}</p>
+    `;
+
+    window._starSelections = window._starSelections || {};
+    window._tipoReportes   = window._tipoReportes   || {};
+}
+
+function renderStarsStatic(val) {
+    const full  = Math.round(val);
+    return [1,2,3,4,5].map(i =>
+        `<span style="color:${i<=full?'#f39c12':'#444'};font-size:14px">★</span>`
+    ).join('');
+}
+
+function abrirCalificar(ocmId) {
+    const el = document.getElementById(`form-calificar-${ocmId}`);
+    if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function abrirReporte(ocmId) {
+    const el = document.getElementById(`form-reporte-${ocmId}`);
+    if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function selectStar(ocmId, val) {
+    window._starSelections[ocmId] = val;
+    document.querySelectorAll(`#stars-${ocmId} .star`).forEach((s, i) => {
+        s.classList.toggle('filled', i < val);
+    });
+}
+
+function selectTipoReporte(ocmId, tipo, el) {
+    window._tipoReportes[ocmId] = tipo;
+    document.querySelectorAll(`#form-reporte-${ocmId} .tipo-pill`).forEach(p => p.classList.remove('selected'));
+    el.classList.add('selected');
+}
+
+async function enviarCalificacion(ocmId, nombre) {
+    const puntaje = window._starSelections?.[ocmId];
+    if (!puntaje) return alert('Selecciona una calificación de 1 a 5');
+    const comentario = document.getElementById(`com-${ocmId}`)?.value || '';
+    try {
+        await apiFetch('/calificaciones', 'POST', { estacion_ocm_id: ocmId, estacion_nombre: nombre, puntaje, comentario });
+        alert('¡Calificación enviada!');
+        mostrarDetallesEstacion(estacionSeleccionada);
+    } catch(e) { alert(e.message); }
+}
+
+async function enviarReporte(ocmId, nombre) {
+    const tipo = window._tipoReportes?.[ocmId];
+    if (!tipo) return alert('Selecciona el tipo de problema');
+    const descripcion = document.getElementById(`rep-desc-${ocmId}`)?.value || '';
+    try {
+        await apiFetch('/reportes', 'POST', { estacion_ocm_id: ocmId, estacion_nombre: nombre, tipo, descripcion });
+        alert('¡Reporte enviado!');
+        mostrarDetallesEstacion(estacionSeleccionada);
+    } catch(e) { alert(e.message); }
+}
+
+async function checkFavorito(ocmId) {
+    if (!authToken) return false;
+    try {
+        const favs = await apiFetch('/favoritos');
+        return favs.some(f => f.estacion_ocm_id === String(ocmId));
+    } catch(e) { return false; }
+}
+
+async function toggleFavorito(ocmId, nombre, btn) {
+    const esFav = btn.classList.contains('btn-primary');
+    try {
+        if (esFav) {
+            await apiFetch(`/favoritos/${ocmId}`, 'DELETE');
+            btn.classList.remove('btn-primary'); btn.classList.add('btn-outline');
+            btn.textContent = '☆';
+        } else {
+            await apiFetch('/favoritos', 'POST', { estacion_ocm_id: ocmId, estacion_nombre: nombre });
+            btn.classList.add('btn-primary'); btn.classList.remove('btn-outline');
+            btn.textContent = '★';
+        }
+    } catch(e) { alert(e.message); }
+}
+
+// ════════════════════════════════════════════════
+// RUTAS
+// ════════════════════════════════════════════════
+
+async function calcularRuta(destLat, destLon) {
+    if (!navigator.geolocation) return alert('GPS no disponible');
+    navigator.geolocation.getCurrentPosition(async pos => {
+        const { latitude: uLat, longitude: uLon } = pos.coords;
+        if (rutaCapa) map.removeLayer(rutaCapa);
+        if (usuarioMarcador) map.removeLayer(usuarioMarcador);
+        usuarioMarcador = L.marker([uLat, uLon]).addTo(map).bindPopup('📍 Estás aquí').openPopup();
+        try {
+            const geo = await fetch(`${API}/buscar-ruta?user_lat=${uLat}&user_lon=${uLon}&dest_lat=${destLat}&dest_lon=${destLon}`).then(r => r.json());
+            rutaCapa = L.geoJSON(geo, { style: { color: '#39a900', weight: 5, opacity: 0.8 } }).addTo(map);
+            map.fitBounds(rutaCapa.getBounds(), { padding: [50,50] });
+        } catch(e) { alert('Error al calcular la ruta. Verifica que el backend esté corriendo.'); }
+    }, () => alert('Permiso de GPS denegado.'));
+}
+
+// ════════════════════════════════════════════════
+// VEHÍCULOS
+// ════════════════════════════════════════════════
+
+async function cargarVehiculos() {
+    try {
+        const data = await apiFetch('/vehiculos');
+        const cont = document.getElementById('lista-vehiculos');
+        if (!data.length) { cont.innerHTML = '<p class="placeholder">Sin vehículos. Agrega el tuyo.</p>'; return; }
+        cont.innerHTML = data.map(v => `
+            <div class="card" style="${v.activo ? 'border-color:#39a900' : ''}">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">${v.marca} ${v.modelo} ${v.anio || ''}</div>
+                        <div class="card-sub">🔌 ${v.tipo_conector} · 🔋 ${v.autonomia_km} km</div>
+                    </div>
+                    <div style="display:flex;gap:6px;align-items:center">
+                        ${v.activo ? '<span class="badge badge-green">activo</span>' : `<button class="btn btn-outline btn-sm" onclick="activarVehiculo('${v.id}')">Activar</button>`}
+                        <button class="btn btn-danger btn-sm" onclick="eliminarVehiculo('${v.id}')">✕</button>
+                    </div>
+                </div>
+            </div>`).join('');
+
+        const activo = data.find(v => v.activo);
+        if (activo) {
+            document.getElementById('conector-select').value = activo.tipo_conector;
+            filtrarEstaciones();
+        }
+    } catch(e) {}
+}
+
+async function crearVehiculo() {
+    const marca = document.getElementById('v-marca').value.trim();
+    const modelo = document.getElementById('v-modelo').value.trim();
+    const anio = parseInt(document.getElementById('v-anio').value) || null;
+    const autonomia_km = parseFloat(document.getElementById('v-autonomia').value) || 300;
+    const tipo_conector = document.getElementById('v-conector').value;
+    if (!marca || !modelo) return showAlert('vehiculo-alert', 'Ingresa marca y modelo', 'error');
+    try {
+        await apiFetch('/vehiculos', 'POST', { marca, modelo, anio, autonomia_km, tipo_conector, activo: true });
+        showAlert('vehiculo-alert', '¡Vehículo guardado!', 'success');
+        cargarVehiculos();
+        ['v-marca','v-modelo','v-anio','v-autonomia'].forEach(id => document.getElementById(id).value = '');
+    } catch(e) { showAlert('vehiculo-alert', e.message, 'error'); }
+}
+
+async function activarVehiculo(id) {
+    try { await apiFetch(`/vehiculos/${id}/activar`, 'PUT'); cargarVehiculos(); } catch(e) {}
+}
+
+async function eliminarVehiculo(id) {
+    if (!confirm('¿Eliminar este vehículo?')) return;
+    try { await apiFetch(`/vehiculos/${id}`, 'DELETE'); cargarVehiculos(); } catch(e) {}
+}
+
+// ════════════════════════════════════════════════
+// HISTORIAL DE CARGAS
+// ════════════════════════════════════════════════
+
+async function cargarHistorial() {
+    try {
+        const stats = await apiFetch('/cargas/estadisticas');
+        document.getElementById('stat-sesiones').textContent = stats.total_sesiones;
+        document.getElementById('stat-kwh').textContent = stats.total_kwh;
+        document.getElementById('stat-costo').textContent =
+            stats.total_costo > 0 ? `$${(stats.total_costo/1000).toFixed(0)}k` : '$0';
+
+        const cargas = await apiFetch('/cargas');
+        const lista = document.getElementById('lista-cargas');
+        if (!cargas.length) { lista.innerHTML = '<p class="placeholder">Sin cargas registradas.</p>'; return; }
+        lista.innerHTML = cargas.slice(0, 10).map(c => `
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title" style="font-size:13px">${c.estacion_nombre || c.estacion_ocm_id}</div>
+                        <div class="card-sub">${c.kwh_cargados} kWh · $${c.costo_estimado.toLocaleString()}</div>
+                    </div>
+                </div>
+                <p style="font-size:11px;color:#555;margin-top:4px">${new Date(c.fecha).toLocaleDateString('es-CO')}</p>
+            </div>`).join('');
+    } catch(e) {}
+}
+
+async function registrarCarga() {
+    const estacion_nombre = document.getElementById('h-estacion').value.trim();
+    const kwh = parseFloat(document.getElementById('h-kwh').value) || 0;
+    const costo = parseFloat(document.getElementById('h-costo').value) || 0;
+    const notas = document.getElementById('h-notas').value;
+    if (!estacion_nombre) return showAlert('carga-alert', 'Ingresa el nombre de la estación', 'error');
+    try {
+        await apiFetch('/cargas', 'POST', {
+            estacion_ocm_id: estacion_nombre.replace(/\s+/g,'_').toLowerCase(),
+            estacion_nombre, kwh_cargados: kwh, costo_estimado: costo, notas
+        });
+        showAlert('carga-alert', '¡Carga registrada!', 'success');
+        cargarHistorial();
+        ['h-estacion','h-kwh','h-costo','h-notas'].forEach(id => document.getElementById(id).value = '');
+    } catch(e) { showAlert('carga-alert', e.message, 'error'); }
+}
+
+// ════════════════════════════════════════════════
+// MÉTODOS DE PAGO
+// ════════════════════════════════════════════════
+
+async function cargarPagos() {
+    try {
+        const pagos = await apiFetch('/pagos');
+        const cont = document.getElementById('lista-pagos');
+        if (!pagos.length) { cont.innerHTML = '<p class="placeholder">Sin métodos de pago.</p>'; return; }
+        cont.innerHTML = pagos.map(p => `
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">${p.tipo}</div>
+                        <div class="card-sub">${p.numero}</div>
+                    </div>
+                    <div style="display:flex;gap:6px">
+                        <span class="badge ${p.estado ? 'badge-green' : 'badge-gray'}">${p.estado ? 'Activo' : 'Inactivo'}</span>
+                        <button class="btn btn-sm btn-outline" onclick="editarPago('${p.id}')">✏️</button>
+                        <button class="btn btn-sm btn-danger" onclick="eliminarPago('${p.id}')">🗑</button>
+                    </div>
+                </div>
+            </div>`).join('');
+    } catch(e) {}
+}
+
+async function crearPago() {
+    const tipo = document.getElementById('p-tipo').value;
+    const numero = document.getElementById('p-numero').value.trim();
+    const estado = document.getElementById('p-estado').value === 'true';
+    if (!tipo || !numero) return showAlert('pago-alert', 'Completa todos los campos', 'error');
+    try {
+        await apiFetch('/pagos', 'POST', { tipo, numero, estado });
+        showAlert('pago-alert', 'Método de pago guardado', 'success');
+        cargarPagos();
+        document.getElementById('p-numero').value = '';
+    } catch(e) { showAlert('pago-alert', e.message, 'error'); }
+}
+
+async function editarPago(pid) {
+    const nuevoNumero = prompt('Nuevo número (enmascarado):');
+    if (nuevoNumero !== null && nuevoNumero.trim()) {
+        try {
+            await apiFetch(`/pagos/${pid}`, 'PUT', { numero: nuevoNumero.trim() });
+            cargarPagos();
+            alert('Método actualizado');
+        } catch(e) { alert(e.message); }
+    }
+}
+
+async function eliminarPago(pid) {
+    if (!confirm('¿Eliminar este método de pago?')) return;
+    try {
+        await apiFetch(`/pagos/${pid}`, 'DELETE');
+        cargarPagos();
+    } catch(e) { alert(e.message); }
+}
+
+// ════════════════════════════════════════════════
+// MIS RESERVAS
+// ════════════════════════════════════════════════
+
+async function cargarReservasUsuario() {
+    try {
+        const reservas = await apiFetch('/mis-reservas');
+        const cont = document.getElementById('lista-reservas');
+        if (!reservas.length) { cont.innerHTML = '<p class="placeholder">Sin reservas.</p>'; return; }
+        cont.innerHTML = reservas.map(r => `
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">${r.estacion_nombre || r.estacion_ocm_id}</div>
+                        <div class="card-sub">${new Date(r.fecha_hora_inicio).toLocaleString()} → ${new Date(r.fecha_hora_fin).toLocaleString()}</div>
+                    </div>
+                    <div style="display:flex;gap:6px">
+                        <span class="badge ${r.estado === 'activa' ? 'badge-green' : 'badge-gray'}">${r.estado}</span>
+                        ${r.estado === 'activa' ? `<button class="btn btn-sm btn-danger" onclick="cancelarReserva('${r.id}')">Cancelar</button>` : ''}
+                        <button class="btn btn-sm btn-outline" onclick="editarReserva('${r.id}')">✏️</button>
+                    </div>
+                </div>
+            </div>`).join('');
+        document.getElementById('lista-reservas-perfil').innerHTML = reservas.filter(r => r.estado === 'activa').length ?
+            reservas.filter(r => r.estado === 'activa').map(r => `
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title" style="font-size:13px">${r.estacion_nombre || r.estacion_ocm_id}</div>
+                            <div class="card-sub">${new Date(r.fecha_hora_inicio).toLocaleString()} → ${new Date(r.fecha_hora_fin).toLocaleString()}</div>
+                        </div>
+                        <button class="btn btn-sm btn-danger" onclick="cancelarReserva('${r.id}')">Cancelar</button>
+                    </div>
+                </div>`).join('') :
+            '<p class="placeholder">Sin reservas activas.</p>';
+    } catch(e) {}
+}
+
+// CAMBIO: Nueva función para cargar favoritos en la pestaña Perfil
+async function cargarFavoritosPerfil() {
+    try {
+        const favs = await apiFetch('/favoritos');
+        const cont = document.getElementById('lista-favoritos-perfil');
+        if (!favs.length) { cont.innerHTML = '<p class="placeholder">Sin favoritos guardados.</p>'; return; }
+        cont.innerHTML = favs.map(f => `
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title" style="font-size:13px">${f.estacion_nombre}</div>
+                        <div class="card-sub">ID: ${f.estacion_ocm_id}</div>
+                    </div>
+                    <button class="btn btn-sm btn-danger" onclick="quitarFavoritoPerfil('${f.estacion_ocm_id}')">🗑 Quitar</button>
+                </div>
+            </div>`).join('');
+    } catch(e) { console.error(e); }
+}
+
+// CAMBIO: Función para quitar favoritos desde el perfil
+async function quitarFavoritoPerfil(estacionId) {
+    if (!confirm('¿Quitar esta estación de favoritos?')) return;
+    try {
+        await apiFetch(`/favoritos/${estacionId}`, 'DELETE');
+        cargarFavoritosPerfil();
+        // Actualizar el botón de favoritos en el mapa si la estación está seleccionada
+        if (estacionSeleccionada && String(estacionSeleccionada.ID) === estacionId) {
+            mostrarDetallesEstacion(estacionSeleccionada);
+        }
+    } catch(e) { alert(e.message); }
+}
+
+async function crearReserva() {
+    const estacion_ocm_id = document.getElementById('r-estacion').value.trim();
+    const estacion_nombre = document.getElementById('r-estacion-nombre').value.trim();
+    const inicio = document.getElementById('r-inicio').value;
+    const fin = document.getElementById('r-fin').value;
+    if (!estacion_ocm_id || !inicio || !fin) return showAlert('reserva-alert', 'Completa todos los campos', 'error');
+    const fechaInicio = new Date(inicio);
+    const fechaFin = new Date(fin);
+    if (fechaInicio >= fechaFin) return showAlert('reserva-alert', 'La fecha de inicio debe ser anterior a la de fin', 'error');
+    try {
+        await apiFetch('/reservar', 'POST', {
+            estacion_ocm_id,
+            estacion_nombre,
+            fecha_hora_inicio: fechaInicio.toISOString(),
+            fecha_hora_fin: fechaFin.toISOString()
+        });
+        showAlert('reserva-alert', 'Reserva creada', 'success');
+        cargarReservasUsuario();
+        ['r-estacion','r-estacion-nombre','r-inicio','r-fin'].forEach(id => document.getElementById(id).value = '');
+    } catch(e) { showAlert('reserva-alert', e.message, 'error'); }
+}
+
+async function editarReserva(rid) {
+    const nuevoInicio = prompt('Nueva fecha de inicio (YYYY-MM-DDTHH:MM):');
+    if (nuevoInicio === null) return;
+    const nuevoFin = prompt('Nueva fecha de fin (YYYY-MM-DDTHH:MM):');
+    if (nuevoFin === null) return;
+    try {
+        await apiFetch(`/reservas/${rid}`, 'PUT', {
+            fecha_hora_inicio: new Date(nuevoInicio).toISOString(),
+            fecha_hora_fin: new Date(nuevoFin).toISOString()
+        });
+        cargarReservasUsuario();
+        alert('Reserva actualizada');
+    } catch(e) { alert(e.message); }
+}
+
+async function cancelarReserva(rid) {
+    if (!confirm('¿Cancelar esta reserva?')) return;
+    try {
+        await apiFetch(`/reservas/${rid}/cancelar`, 'PATCH');
+        cargarReservasUsuario();
+    } catch(e) { alert(e.message); }
+}
+
+// ════════════════════════════════════════════════
+// PERFIL
+// ════════════════════════════════════════════
+
+async function cargarPerfil() {
+    try {
+        const stats = await apiFetch('/cargas/estadisticas');
+        document.getElementById('perfil-cargas').textContent = stats.total_sesiones;
+        document.getElementById('perfil-kwh').textContent = stats.total_kwh;
+    } catch(e) {}
+}
+
+// ════════════════════════════════════════════════
+// AUTH (Unificado)
+// ════════════════════════════════════════════════
+
+function abrirAuthModal(tab) {
+    document.getElementById('auth-modal').style.display = 'flex';
+    switchAuthTab(tab || 'login');
+    document.body.style.overflow = 'hidden';
+}
+
+function cerrarAuthModal() {
+    document.getElementById('auth-modal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+function switchAuthTab(tab) {
+    document.getElementById('form-login').style.display   = tab === 'login'    ? 'block' : 'none';
+    document.getElementById('form-registro').style.display = tab === 'registro' ? 'block' : 'none';
+    document.querySelectorAll('.auth-tab').forEach((t, i) => t.classList.toggle('active', (i===0) === (tab==='login')));
+    clearAlert('auth-alert');
+}
+
+function togglePasswordVisibility(inputId, eyeEl) {
+    const input = document.getElementById(inputId);
+    input.type = input.type === 'password' ? 'text' : 'password';
+    eyeEl.style.opacity = input.type === 'text' ? '1' : '0.6';
+}
+
+function validarFortalezaPassword() {
+    const val  = document.getElementById('reg-pass').value;
+    const conf = document.getElementById('reg-pass-confirm').value;
+    const barra = document.getElementById('strength-bar');
+    const progreso = document.getElementById('strength-progress');
+    const requisitos = document.getElementById('password-requisitos');
+    const btnCrear = document.getElementById('btn-crear-cuenta');
+
+    if (val.length === 0) {
+        barra.classList.remove('show');
+        requisitos.classList.remove('show');
+        progreso.style.width = '0%';
+        btnCrear.disabled = true;
+        return false;
+    }
+
+    barra.classList.add('show');
+    requisitos.classList.add('show');
+
+    const reglas = {
+        'req-min': val.length >= 8,
+        'req-may': /[A-Z]/.test(val),
+        'req-low': /[a-z]/.test(val),
+        'req-num': /\d/.test(val),
+        'req-sim': /[!@#$%^&*(),.?":{}|<>_\-+=]/.test(val),
+        'req-same': val === conf && val !== ''
+    };
+
+    let score = 0;
+    for (const id in reglas) {
+        marcarRequisito(id, reglas[id]);
+        if (reglas[id]) score++;
+    }
+
+    const percent = (score / 6) * 100;
+    progreso.style.width = percent + '%';
+    if (percent < 40)      progreso.style.background = '#e74c3c';
+    else if (percent < 80) progreso.style.background = '#f39c12';
+    else                   progreso.style.background = '#39a900';
+
+    const completo = score === 6;
+    btnCrear.disabled = !completo;
+    return completo;
+}
+
+function marcarRequisito(id, ok) {
+    const el = document.getElementById(id);
+    el.classList.toggle('ok', ok);
+    el.textContent = (ok ? '✔ ' : '❌ ') + el.textContent.slice(2);
+}
+
+document.getElementById('reg-pass').addEventListener('input', validarFortalezaPassword);
+document.getElementById('reg-pass-confirm').addEventListener('input', validarFortalezaPassword);
+
+async function doLogin() {
+    const email = document.getElementById('login-email').value.trim();
+    const pass  = document.getElementById('login-pass').value;
+    if (!email || !pass) return showAlert('auth-alert', 'Completa todos los campos', 'error');
+    try {
+        const form = new URLSearchParams({ username: email, password: pass });
+        const res  = await fetch(`${API}/auth/login`, { method: 'POST', body: form });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Error de autenticación');
+        // Guardar SOLO el token
+        localStorage.setItem('ev_token', data.access_token);
+        cerrarAuthModal();
+        checkSavedToken(); // Recargar sesión
+    } catch(e) { showAlert('auth-alert', e.message, 'error'); }
+}
+
+async function doRegistro() {
+    const nombre = document.getElementById('reg-nombre').value.trim();
+    const email  = document.getElementById('reg-email').value.trim();
+    const pass   = document.getElementById('reg-pass').value;
+    if (!nombre || !email || !pass) return showAlert('auth-alert', 'Completa todos los campos', 'error');
+    if (!validarFortalezaPassword()) return showAlert('auth-alert', 'Tu contraseña no cumple todos los requisitos', 'error');
+    try {
+        const res  = await fetch(`${API}/auth/registro`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre, email, password: pass })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Error al registrar');
+        localStorage.setItem('ev_token', data.access_token);
+        cerrarAuthModal();
+        checkSavedToken();
+    } catch(e) { showAlert('auth-alert', e.message, 'error'); }
+}
+
+function setSession(data) {
+    // data es el objeto con access_token y usuario
+    authToken = data.access_token;
+    currentUser = data.usuario;
+    // No guardar nombre en localStorage
+    cerrarAuthModal();
+    
+    document.getElementById('conector-select').disabled = false;
+    document.getElementById('tab-mapa').innerHTML = '<p class="placeholder">Selecciona una estación en el mapa para ver sus detalles.</p>';
+    
+    document.getElementById('user-name-display').textContent  = currentUser.nombre;
+    const tu = document.getElementById('topbar-usuario'); if(tu) tu.textContent = currentUser.nombre;
+    document.getElementById('avatar-initials').textContent    = currentUser.nombre.charAt(0).toUpperCase();
+    document.querySelectorAll('.tab-requiere-login').forEach(el => el.style.display = '');
+    const banner = document.getElementById('banner-sin-sesion');
+    if (banner) banner.style.display = 'none';
+    document.getElementById('btn-topbar-login').style.display    = 'none';
+    document.getElementById('btn-topbar-registro').style.display = 'none';
+    document.getElementById('btn-topbar-logout').style.display   = 'inline-block';
+    
+    const adminTab = document.getElementById('tab-btn-admin');
+    if (adminTab) {
+        if (currentUser.is_admin) {
+            adminTab.style.display = '';
+        } else {
+            adminTab.style.display = 'none';
+        }
+    }
+
+    if (currentUser.is_admin) {
+        const autoTab = document.getElementById('btn-tab-vehiculos');
+        const perfilTab = document.getElementById('btn-tab-perfil');
+        const cargasTab = document.getElementById('btn-tab-historial');
+        const pagosTab = document.getElementById('btn-tab-pagos');
+        const reservasTab = document.getElementById('btn-tab-reservas');
+        if (autoTab) autoTab.style.display = 'none';
+        if (perfilTab) perfilTab.style.display = 'none';
+        if (cargasTab) cargasTab.style.display = 'none';
+        if (pagosTab) pagosTab.style.display = 'none';
+        if (reservasTab) reservasTab.style.display = 'none';
+    }
+
+    cargarVehiculos();
+    cargarHistorial();
+    cargarPagos();
+    cargarReservasUsuario();
+    cargarFavoritosPerfil(); // CAMBIO: Cargar favoritos al iniciar sesión
+    cargarPerfil();
+}
+
+function doLogout() {
+    localStorage.removeItem('ev_token');
+    // Reiniciar todo
+    location.reload(); // Recargar la página para resetear estado
+}
+
+function limpiarFormulariosAuth() {
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-pass').value  = '';
+    document.getElementById('reg-nombre').value       = '';
+    document.getElementById('reg-email').value        = '';
+    document.getElementById('reg-pass').value         = '';
+    document.getElementById('reg-pass-confirm').value = '';
+    document.getElementById('strength-bar').classList.remove('show');
+    document.getElementById('password-requisitos').classList.remove('show');
+    document.getElementById('strength-progress').style.width = '0%';
+    document.getElementById('btn-crear-cuenta').disabled = true;
+    document.querySelectorAll('#password-requisitos li').forEach(li => {
+        li.classList.remove('ok');
+        li.textContent = '❌ ' + li.textContent.slice(2);
+    });
+    switchAuthTab('login');
+    cerrarAuthModal();
+}
+
+async function checkSavedToken() {
+    const token = localStorage.getItem('ev_token');
+    if (!token) {
+        // No token, estado no logueado
+        return;
+    }
+    try {
+        const p = await apiFetch('/auth/perfil');
+        // Si llegamos aquí, el token es válido
+        setSession({ access_token: token, usuario: p.usuario });
+    } catch(e) {
+        // Token inválido
+        localStorage.removeItem('ev_token');
+        location.reload();
+    }
+}
+
+// ════════════════════════════════════════════════
+// UTILIDADES
+// ════════════════════════════════════════════════
+
+async function apiFetch(path, method = 'GET', body = null) {
+    const token = localStorage.getItem('ev_token');
+    const opts = {
+        method,
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+    };
+    if (body) opts.body = JSON.stringify(body);
+    const res  = await fetch(`${API}${path}`, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Error en la solicitud');
+    return data;
+}
+
+function showTab(id) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    const panel = document.getElementById(id);
+    if (panel) panel.classList.add('active');
+    const allTabs = ['tab-mapa','tab-vehiculos','tab-historial','tab-pagos','tab-reservas','tab-perfil'];
+    const idx = allTabs.indexOf(id);
+    document.querySelectorAll('.nav-tab')[idx]?.classList.add('active');
+    if (id === 'tab-historial') cargarHistorial();
+    if (id === 'tab-perfil') {
+        cargarPerfil();
+        cargarFavoritosPerfil(); // CAMBIO: Cargar favoritos al abrir el perfil
+        cargarReservasUsuario(); // Cargar reservas activas
+    }
+    if (id === 'tab-vehiculos') cargarVehiculos();
+    if (id === 'tab-pagos') cargarPagos();
+    if (id === 'tab-reservas') cargarReservasUsuario();
+}
+
+function showAlert(id, msg, type) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = msg;
+    el.className = `alert alert-${type}`;
+    el.style.display = 'block';
+}
+
+function clearAlert(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+}
+
+// CAMBIO: Nueva función para crear reserva directamente desde la tarjeta del mapa
+async function crearReservaDesdeMapa(ocmId, nombre) {
+    const inicioInput = document.getElementById(`res-${ocmId}-inicio`);
+    const finInput = document.getElementById(`res-${ocmId}-fin`);
+    
+    if (!inicioInput || !finInput) {
+        alert('Error al cargar el formulario de reserva.');
+        return;
+    }
+
+    const inicio = inicioInput.value;
+    const fin = finInput.value;
+
+    if (!inicio || !fin) {
+        alert('Por favor, selecciona la fecha y hora de inicio y fin de la reserva.');
+        return;
+    }
+
+    const fechaInicio = new Date(inicio);
+    const fechaFin = new Date(fin);
+
+    if (fechaInicio >= fechaFin) {
+        alert('La fecha de inicio debe ser anterior a la de fin.');
+        return;
+    }
+
+    try {
+        await apiFetch('/reservar', 'POST', {
+            estacion_ocm_id: ocmId,
+            estacion_nombre: nombre,
+            fecha_hora_inicio: fechaInicio.toISOString(),
+            fecha_hora_fin: fechaFin.toISOString()
+        });
+        alert('¡Reserva confirmada con éxito!');
+        // Recargar la info de la estación para actualizar el estado
+        if (estacionSeleccionada) {
+            mostrarDetallesEstacion(estacionSeleccionada);
+        }
+        // Actualizar listas de reservas
+        cargarReservasUsuario();
+    } catch(e) {
+        alert(e.message);
+    }
+}
+
+// Iniciar
+checkSavedToken();
+
+</script>
+</body>
+</html>
